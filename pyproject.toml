@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "huawei-log-parser"
+version = "0.1.0"
+description = ""
+authors = ["vlad <vladislav.grachev@gmail.com>"]
+readme = "README.md"
+packages = [{include = "huawei_log_parser"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+diagrams = "^0.23.3"
+pillow = "^10.3.0"
+django = "^5.0.6"
+pyflowchart = "^0.3.1"
+django-mermaid = "^0.0.7"
+flet = "^0.23.2"
+dearpygui = "^1.11.1"
+streamlit = "^1.38.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.3.0"
+isort = "^5.13.2"
+flake8 = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

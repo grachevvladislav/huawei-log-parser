@@ -1,0 +1,2 @@
+class ExtractFail(Exception):
+    """ExtractFail."""
