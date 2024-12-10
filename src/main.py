@@ -2,7 +2,7 @@ import streamlit as st
 
 from constants import NAME, exception_message
 from settings import DEBUG
-from visualization import hide_loader, make_page, sas_graph, zip_file_parsing
+from visualization import hide_loader, make_page, zip_file_parsing
 
 
 def main():
@@ -24,9 +24,6 @@ def main():
             data = zip_file_parsing(file)
             if data:
                 make_page(data)
-        elif DEBUG:
-            # make_page({})
-            sas_graph({})
     except Exception:
         if DEBUG:
             raise Exception

@@ -16,8 +16,8 @@ from constants import (
     port_y_size,
     port_y_step,
 )
-from exceptions import DeterminingDirectionFail
-from parsing import extract_conf, get_sas_data
+from exceptions import DeterminingDirectionFail, ParsingFail
+from parsing import extract_conf, parse_to_dict, example
 
 
 def hide_loader() -> None:
@@ -55,6 +55,20 @@ def hide_loader() -> None:
                     height: 0%;
                     position: fixed;
                     }
+                    # [data-testid="stMetricValue"] {
+                    # font-size: 10px;
+                    # }
+                    # [data-testid="stMetricLabel"] {
+                    # font-size: 50px;
+                    # }
+                    [data-testid="stVerticalBlockBorderWrapper"] {
+                    position: sticky;
+                    top: 0;
+                    #background-color: #f9f9f9;
+                    padding: 10px;
+                    #order-bottom: 2px solid #ddd;
+                    #z-index: 1000;
+                    }
                     </style>
                     """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -64,7 +78,8 @@ def zip_file_parsing(uploaded_file: BytesIO) -> dict[str, dict]:
     """Screen saver for unpacking archive."""
     try:
         with st.spinner("Loading..."):
-            conf = extract_conf(uploaded_file)
+            lines_conf = extract_conf(uploaded_file)
+            conf = parse_to_dict(lines_conf)
         return conf
     except (FileNotFoundError, KeyError) as e:
         st.error(e)
@@ -118,10 +133,10 @@ def create_block(
                 tuple(pos),
                 {"content": fix_node_name(port, max_len)},
                 style={"font-size": "10px", "font-family": "monospace"},
-                draggable=True,
                 node_type=["input", "output"][direction],
                 source_position="right",
                 target_position="left",
+                draggable=False,
             )
         )
         pos[1] += port_y_size + port_y_step
@@ -246,12 +261,22 @@ def make_state(
     return input_lt_pos[1], StreamlitFlowState(slf_nodes, slf_edges)
 
 
+@st.fragment
 def sas_graph(data: list[str]) -> None:
-    col1, col2 = st.columns([3, 1])
-
-    links_seq, ports = get_sas_data(data)
+    links_seq, ports = [], []
+    sas_info = {}
+    for block in data:
+        if block[0][0] != 'ID':
+            raise ParsingFail('Не найдено поле ID для одного из SAS линков.')
+        id = block[0][1]
+        ports.append(id)
+        sas_info[id] = []
+        for pair in block:
+            sas_info[id].append(pair)
+            if 'Cascade Info' == pair[0]:
+                links_seq.append(pair[1])
     size, state = make_state(links_seq, ports)
-
+    col1, col2 = st.columns([3, 2])
     with col1:
         st.session_state.curr_state = streamlit_flow(
             "example_flow",
@@ -261,33 +286,31 @@ def sas_graph(data: list[str]) -> None:
             hide_watermark=True,
             allow_zoom=True,
             show_controls=False,
-            pan_on_drag=True,
             get_node_on_click=True,
             min_zoom=0.8,
-            height=size,
+            height=size + 100,
         )
+
     with col2:
-        show_details()
+        container = st.container(border=True)
+        with container:
+            show_details(sas_info)
 
 
-@st.fragment
-def show_details():
-    for node in st.session_state.curr_state.nodes:
-        if node.id == st.session_state.curr_state.selected_id:
-            st.write(node.id, node.position, len(node.data["content"]))
-            return None
-    st.write("Тыкни на ноду")
+def show_details(info: dict):
+    selected_id = st.session_state.curr_state.selected_id
+    if selected_id in info.keys():
+        st.text('\n'.join(': '.join(x) for x in info[selected_id]))
+        return None
+    st.write("Выбери порт")
 
 
 def make_page(data):
-    s = data["summary"]
-    st.title(
-        f"{s['System Name']} {s['Product Model']} "
-        f"sn:\u00A0{s['Product Serial Number']}"
-    )
+    tab1, tab2, tab3 = st.tabs(["Summary", "License", "SAS Port"])
 
-    for name, value in data.items():
-        with st.expander(name):
-            st.write(value)
-
-    sas_graph(data)
+    with tab1:
+        st.write('')
+    with tab2:
+        st.write('fffffffffffff')
+    with tab3:
+        sas_graph(data["sas_ports"])

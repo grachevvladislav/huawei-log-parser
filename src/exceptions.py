@@ -4,3 +4,7 @@ class ExtractFail(Exception):
 
 class DeterminingDirectionFail(Exception):
     """DeterminingDirectionFail."""
+
+
+class ParsingFail(Exception):
+    """ParsingFail."""

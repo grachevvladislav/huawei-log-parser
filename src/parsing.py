@@ -3,7 +3,9 @@ import tarfile
 from io import BytesIO
 
 from exceptions import ExtractFail
-from fixture import data_str, names_example
+from fixture import data_str, names_example, example
+from typing import Union
+from pprint import pprint
 
 
 def fix_values(data: dict[dict]) -> None:
@@ -38,17 +40,25 @@ def extract_to_dict(
     start_pattern: str = None,
     end_pattern: str = None,
 ) -> tuple[dict, int]:
+    """
+
+    :param lines: Strings for parsing.
+    :param start_line: Start line number.
+    :param start_pattern: First line pattern.
+    :param end_pattern: Last line pattern.
+    :return: Result dict. Line number matching the final pattern.
+    """
     if start_pattern and start_line:
-        raise ExtractFail("Одновременно заданы параметры start_line и start_pattern")
+        raise ExtractFail(
+            "Одновременно заданы параметры start_line и start_pattern")
     result = {}
     stack = [(result, -1)]
     if start_pattern:
-        for line, start_line in zip(
-            lines[start_line:], range(start_line, len(lines) + 1)
-        ):
+        for line, start_line in zip(lines, range(len(lines) + 1)):
             if re.match(start_pattern, line):
                 break
 
+    number = 0
     for line, number in zip(lines[start_line:], range(start_line, len(lines) + 1)):
         if re.match(end_pattern, line):
             break
@@ -65,8 +75,12 @@ def extract_to_dict(
     return result, number
 
 
-def extract_conf(file: BytesIO) -> dict[str, dict]:
-    """Extracting a configuration into a dictionary."""
+def extract_conf(file: BytesIO) -> list[str]:
+    """
+    Extracting a configuration into a list of stings.
+    :param file: tgz archive.
+    :return: Confing by lines.
+    """
     with tarfile.open(fileobj=file) as tar:
         if "Config/Config.tgz" not in tar.getnames():
             raise FileNotFoundError(
@@ -80,61 +94,61 @@ def extract_conf(file: BytesIO) -> dict[str, dict]:
             conf_by_line = (
                 conf_tar.extractfile("config.txt").read().decode("utf-8").split("\n")
             )
-    summary, key = extract_to_dict(
-        conf_by_line, start_pattern="^.{0,}SUMMARY--", end_pattern=r"^.{0,}License--"
+    return conf_by_line
+
+
+def parse_to_dict(lines: list[str]) -> dict[str, dict]:
+    summary, pos = extract_to_dict(
+        lines, start_pattern="^.{0,}SUMMARY--",
+        end_pattern=r"^.{0,}License--"
     )
-    result = {"summary": summary["SUMMARY"]}
+    sas_port, index = get_block(lines[pos:], start_pattern="^.{0,}SAS Port-",
+                                end_pattern="^.{0,}FCoE Port--",
+                                step_pattern="^.{0,}ID: ")
+    sas_port.extend(get_block(lines[index:], start_pattern="^.{0,}SAS Port-",
+                              end_pattern="^.{0,}FCoE Port--",
+                              step_pattern="^.{0,}ID: ")[0])
+
+    result = {
+        "summary": summary["SUMMARY"],
+        "sas_ports": sas_port
+    }
     return result
 
 
-def get_sas_data(data):
-    """Creates a list of ports and links."""
-    links, ports = data_str, names_example
-    return links, ports
+# def get_sas_data(data):
+#     """Creates a list of ports and links."""
+#     links, ports = data_str, names_example
+#     return links, ports
 
 
-# def get_block(data, start_line: int, end_patterns=[], delimiters=[':', '=']):
-#     result = {}
-#     for index in range(start_line + 1, len(data)):
-#         line = data[index]
-#         for pattern in end_patterns:
-#             if pattern in line:
-#                 break
-#
-#         for delimeter in delimiters:
-#             if leftPart(line, delimeter).upper() == key_search.upper():
-#                 key = leftPart(line, delimeter)
-#                 key_value = rightPart(line, delimeter)
-#                 result[key_value] = {}
-#                 break
-#
-#         for delimeter in delimiters:
-#             for clmn in colum ns:
-#                 if leftPart(line, delimeter) == columns[clmn]['search']:
-#                     try:
-#                         prefix_str = result[key_value][columns[clmn]['field']]
-#                     except:
-#                         prefix_str = ''
-#                     if prefix_str != '':
-#                         result[key_value][
-#                             columns[clmn]['field']] = prefix_str + ', ' + chr(
-#                             10) + rightPart(line, delimeter)
-#                     else:
-#                         result[key_value][columns[clmn]['field']] = rightPart(
-#                             line, delimeter)
-#
-#     return index, result
-
-
-# if not isinstance(tree, dict):
-#     for port in tree:
-#         nodes.append(
-#             StreamlitFlowNode(
-#                 parent_name+port, tuple(current_pos),
-#                 {'content': fix_node_name(port, 4)},
-#                 style={"font-size": "10px", "font-family": "monospace"},
-#                 draggable=False, node_type='input',
-#             )
-#         )
-#         current_pos[0] += ports_step
-#     return int(len(tree) * 4 + (len(tree) - 1) * ports_delimiter)
+def get_block(
+        data: list[str],
+        start_pattern: str = '', end_pattern: str = '',
+        step_pattern: str = '',
+) -> dict[str, list[list[str]]]:
+    """
+    Parses strings into a dictionary using patterns.
+    :param data: Data in rows.
+    :param start_pattern: Start template.
+    :param end_pattern: End template.
+    :param step_pattern: Sub block start template.
+    :return: Nested dictionary.
+    """
+    result = []
+    index = 0
+    if start_pattern:
+        for line, index in zip(data, range(len(data) + 1)):
+            if re.match(start_pattern, line):
+                break
+    for line, index in zip(data[index:], range(index, len(data) + 1)):
+        if end_pattern and re.match(end_pattern, line):
+            return result, index
+        if step_pattern and re.match(step_pattern, line):
+            result.append([])
+        match = re.match(r"^\s*(.+)[:|=]\s?(.*)$", line)
+        if match:
+            result[-1].append([match.group(1), match.group(2)])
+        elif line:
+            print("В словарь не добавлена строка", line)
+    return result, index
