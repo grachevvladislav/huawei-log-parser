@@ -1,6 +1,8 @@
 import re
 from io import BytesIO
 from typing import Union
+import pandas as pd
+from pprint import pprint
 
 import networkx as nx
 import streamlit as st
@@ -17,7 +19,7 @@ from constants import (
     port_y_step,
 )
 from exceptions import DeterminingDirectionFail, ParsingFail
-from parsing import extract_conf, parse_to_dict, example
+from parsing import extract_conf, parse_to_dict
 
 
 def hide_loader() -> None:
@@ -261,7 +263,6 @@ def make_state(
     return input_lt_pos[1], StreamlitFlowState(slf_nodes, slf_edges)
 
 
-@st.fragment
 def sas_graph(data: list[str]) -> None:
     links_seq, ports = [], []
     sas_info = {}
@@ -305,12 +306,68 @@ def show_details(info: dict):
     st.write("Выбери порт")
 
 
+def show_summary(info: list[list[list[str]]]) -> None:
+    for block in info:
+        st.text('\n'.join(': '.join(x) for x in block))
+        return None
+
+
+def show_license(info: list[list[list[str]]]) -> None:
+    structured_data = []
+    for item in info:
+        row = {entry[0]: entry[1] for entry in item}
+        structured_data.append(row)
+    df1 = pd.DataFrame(structured_data)
+    st.table(df1)
+    return None
+
+
+def show_psu(info: list[list[list[str]]]) -> None:
+    data = {}
+    for psu in info:
+        row = {entry[0]: entry[1] for entry in psu}
+        # if row.get("Health Status", None) != "Normal" or row.get(
+        #         "Running Status", None) != "Online" and row.get('Enclosure ID', None):
+        #     row['Enclosure ID'] += ' ❗'
+        if not data.get(row.get('Enclosure ID', 'Unknown'), None):
+            data[row.get('Enclosure ID', 'Unknown')] = []
+        data[row.get('Enclosure ID', 'Unknown')].append(row)
+
+    options = ["All", *sorted(data.keys())]
+    col1, col2 = st.columns([4, 1])
+    with col2:
+        selection = st.selectbox("Enclosure ID", options)
+    if selection == options[0]:
+        df1 = pd.DataFrame(
+            [item for sublist in [value for key, value in sorted(data.items())] for item in sublist])
+    else:
+        df1 = pd.DataFrame(data.get(selection, None))
+    with col1:
+        st.table(df1)
+    return None
+
+
+def show_cte():
+    pass
+
+
+@st.fragment
 def make_page(data):
-    tab1, tab2, tab3 = st.tabs(["Summary", "License", "SAS Port"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+        ["Summary", "License", "SAS Port", "Controller", "BBU", "PSU", "Fan"]
+    )
 
     with tab1:
-        st.write('')
+        show_summary(data["summary"])
     with tab2:
-        st.write('fffffffffffff')
+        show_license(data["license"])
     with tab3:
         sas_graph(data["sas_ports"])
+    with tab4:
+        show_license(data["cte"])
+    with tab5:
+        show_license(data["bbu"])
+    with tab6:
+        show_psu(data["psu"])
+    with tab7:
+        show_psu(data["fan"])

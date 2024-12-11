@@ -3,14 +3,15 @@ import streamlit as st
 from constants import NAME, exception_message
 from settings import DEBUG
 from visualization import hide_loader, make_page, zip_file_parsing
+from PIL import Image
 
 
 def main():
+    im = Image.open('static/favicon.png')
     st.set_page_config(
         page_title=NAME,
-        page_icon="⚡",  #'static/apple-touch-icon.png',
+        page_icon=im,
         layout="wide",
-        initial_sidebar_state="expanded",
     )
     hide_loader()
     st.title(NAME)
