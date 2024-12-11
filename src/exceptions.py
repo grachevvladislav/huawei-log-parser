@@ -1,3 +1,6 @@
+"""Exceptions."""
+
+
 class ExtractFail(Exception):
     """ExtractFail."""
 

@@ -1,10 +1,11 @@
+"""Display module."""
+
 import re
 from io import BytesIO
 from typing import Union
-import pandas as pd
-from pprint import pprint
 
 import networkx as nx
+import pandas as pd
 import streamlit as st
 from streamlit_flow import streamlit_flow
 from streamlit_flow.elements import StreamlitFlowEdge, StreamlitFlowNode
@@ -23,6 +24,11 @@ from parsing import extract_conf, parse_to_dict
 
 
 def hide_loader() -> None:
+    """
+    Hide loading icon.
+
+    :return: None
+    """
     hide_streamlit_style = """
                     <style>
                     div[data-testid="stToolbar"] {
@@ -89,6 +95,13 @@ def zip_file_parsing(uploaded_file: BytesIO) -> dict[str, dict]:
 
 
 def fix_node_name(name: str, size: Union[int, float]) -> str:
+    """
+    Resize a string using non-wrapable spaces.
+
+    :param name: Source string.
+    :param size: Required line size.
+    :return: String.
+    """
     size = int(size)
     if size > 155:
         size = 155
@@ -102,7 +115,8 @@ def create_block(
     links: dict[str, str],
 ) -> int:
     """
-    Creating SLF block with ports by coordinates.
+    Create SLF block with ports by coordinates.
+
     :param nodes: SLF nodes list.
     :param pos: Left center pos of node.
     :param ports_list: List of node ports.
@@ -147,7 +161,8 @@ def create_block(
 
 def get_branch_name(enclosure_name) -> str:
     """
-    Getting the branch name from a template.
+    Get the branch name from a template.
+
     :param enclosure_name: Enclosure name
     :return: Branch name
     """
@@ -157,7 +172,8 @@ def get_branch_name(enclosure_name) -> str:
 
 def get_node_name(name) -> str:
     """
-    Getting the node name from a template.
+    Get a node name from a template.
+
     :param name: Enclosure name
     :return:Node name
     """
@@ -169,7 +185,8 @@ def make_state(
     ports_list: list[str],
 ) -> (int, StreamlitFlowState):
     """
-    Creating a list of links and SLF links.
+    Create a list of links and SLF links.
+
     :param links: List of link chains.
     :param ports_list: List of all ports, including inactive ones.
     :return: (Dictionary source: destination, StreamlitFlowEdge list)
@@ -186,13 +203,14 @@ def make_state(
             continue
         for i in range(0, len(list_line), 2):
             directions[list_line[i]] = list_line[i + 1]
-            G.add_edge(get_node_name(list_line[i]), get_node_name(list_line[i + 1]))
+            G.add_edge(
+                get_node_name(list_line[i]), get_node_name(list_line[i + 1])
+            )
             slf_edges.append(
                 StreamlitFlowEdge(
                     f"{list_line[i]}-{list_line[i+1]}",
                     list_line[i],
                     list_line[i + 1],
-                    # label='6666666', label_show_bg=True,
                     animated=True,
                     focusable=True,
                 )
@@ -233,7 +251,8 @@ def make_state(
             len(linked_branches) * (largest_node + node_y_step) + node_y_step
         )
         input_node_x_size = (
-            len(ports_by_nodes[input_node][input_node]) * (port_y_size + port_y_step)
+            len(ports_by_nodes[input_node][input_node])
+            * (port_y_size + port_y_step)
             + port_y_step
         )
         cte_size = max(branches_x_size, input_node_x_size)
@@ -242,7 +261,9 @@ def make_state(
         input_size = create_block(
             slf_nodes,
             [input_lt_pos[0], input_lt_pos[1] + cte_size / 2],
-            ports_by_nodes[get_branch_name(input_node)][get_node_name(input_node)],
+            ports_by_nodes[get_branch_name(input_node)][
+                get_node_name(input_node)
+            ],
             directions,
         )
         y_tree_counter = [
@@ -264,17 +285,23 @@ def make_state(
 
 
 def sas_graph(data: list[str]) -> None:
+    """
+    Build a graph of sas ports.
+
+    :param data: Dictionary with data
+    :return: None
+    """
     links_seq, ports = [], []
     sas_info = {}
     for block in data:
-        if block[0][0] != 'ID':
-            raise ParsingFail('Не найдено поле ID для одного из SAS линков.')
+        if block[0][0] != "ID":
+            raise ParsingFail("Не найдено поле ID для одного из SAS линков.")
         id = block[0][1]
         ports.append(id)
         sas_info[id] = []
         for pair in block:
             sas_info[id].append(pair)
-            if 'Cascade Info' == pair[0]:
+            if "Cascade Info" == pair[0]:
                 links_seq.append(pair[1])
     size, state = make_state(links_seq, ports)
     col1, col2 = st.columns([3, 2])
@@ -298,21 +325,39 @@ def sas_graph(data: list[str]) -> None:
             show_details(sas_info)
 
 
-def show_details(info: dict):
+def show_details(info: dict) -> None:
+    """
+    Display sas port information.
+
+    :param info: Dictionary with information about ports.
+    :return: None
+    """
     selected_id = st.session_state.curr_state.selected_id
     if selected_id in info.keys():
-        st.text('\n'.join(': '.join(x) for x in info[selected_id]))
+        st.text("\n".join(": ".join(x) for x in info[selected_id]))
         return None
     st.write("Выбери порт")
 
 
 def show_summary(info: list[list[list[str]]]) -> None:
+    """
+    Display data from a dictionary.
+
+    :param info: Dictionary with information.
+    :return: None
+    """
     for block in info:
-        st.text('\n'.join(': '.join(x) for x in block))
+        st.text("\n".join(": ".join(x) for x in block))
         return None
 
 
 def show_license(info: list[list[list[str]]]) -> None:
+    """
+    Show a table.
+
+    :param info: Dictionary with data
+    :return: None
+    """
     structured_data = []
     for item in info:
         row = {entry[0]: entry[1] for entry in item}
@@ -323,15 +368,18 @@ def show_license(info: list[list[list[str]]]) -> None:
 
 
 def show_psu(info: list[list[list[str]]]) -> None:
+    """
+    Show a table filtered by Enclosure ID.
+
+    :param info: Dictionary with data
+    :return: None
+    """
     data = {}
     for psu in info:
         row = {entry[0]: entry[1] for entry in psu}
-        # if row.get("Health Status", None) != "Normal" or row.get(
-        #         "Running Status", None) != "Online" and row.get('Enclosure ID', None):
-        #     row['Enclosure ID'] += ' ❗'
-        if not data.get(row.get('Enclosure ID', 'Unknown'), None):
-            data[row.get('Enclosure ID', 'Unknown')] = []
-        data[row.get('Enclosure ID', 'Unknown')].append(row)
+        if not data.get(row.get("Enclosure ID", "Unknown"), None):
+            data[row.get("Enclosure ID", "Unknown")] = []
+        data[row.get("Enclosure ID", "Unknown")].append(row)
 
     options = ["All", *sorted(data.keys())]
     col1, col2 = st.columns([4, 1])
@@ -339,7 +387,12 @@ def show_psu(info: list[list[list[str]]]) -> None:
         selection = st.selectbox("Enclosure ID", options)
     if selection == options[0]:
         df1 = pd.DataFrame(
-            [item for sublist in [value for key, value in sorted(data.items())] for item in sublist])
+            [
+                item
+                for sublist in [value for key, value in sorted(data.items())]
+                for item in sublist
+            ]
+        )
     else:
         df1 = pd.DataFrame(data.get(selection, None))
     with col1:
@@ -347,12 +400,14 @@ def show_psu(info: list[list[list[str]]]) -> None:
     return None
 
 
-def show_cte():
-    pass
-
-
 @st.fragment
-def make_page(data):
+def make_page(data) -> None:
+    """
+    Create the information part of the page.
+
+    :param data: Dictionary with data (by tabs)
+    :return: None
+    """
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         ["Summary", "License", "SAS Port", "Controller", "BBU", "PSU", "Fan"]
     )

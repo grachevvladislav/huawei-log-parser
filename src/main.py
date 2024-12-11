@@ -1,13 +1,20 @@
+"""Main."""
+
 import streamlit as st
+from PIL import Image
 
 from constants import NAME, exception_message
 from settings import DEBUG
 from visualization import hide_loader, make_page, zip_file_parsing
-from PIL import Image
 
 
-def main():
-    im = Image.open('static/favicon.png')
+def main() -> None:
+    """
+    Launch the project.
+
+    :return: None
+    """
+    im = Image.open("static/favicon.png")
     st.set_page_config(
         page_title=NAME,
         page_icon=im,

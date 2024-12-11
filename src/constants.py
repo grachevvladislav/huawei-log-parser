@@ -1,3 +1,5 @@
+"""Constants."""
+
 NAME = "Huawei OceanStor log parser"
 chars_to_px_factor = 7.4
 
